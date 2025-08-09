@@ -1,85 +1,76 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { searchBases, fetchCourseBase, fetchGraphBase, fetchGradeAverage, planTwoTerms } from "./api";
+import { searchBases, fetchCourseBase, fetchGraphBase } from "./api";
 import TreeView from "./components/TreeView";
 import GraphView from "./components/GraphView";
+import Legend from "./components/Legend";
 
 type Campus = "AUTO" | "V" | "O";
 
-function DatalistSearch({ options, value, onChange, onSubmit }:{ options: string[]; value: string; onChange:(v:string)=>void; onSubmit:()=>void; }) {
+function DatalistSearch({ options, value, onChange, onSubmit }:{
+    options: string[]; value: string; onChange:(v:string)=>void; onSubmit:()=>void;
+}) {
     const listId = useRef("bases-" + Math.random().toString(36).slice(2)).current;
     return (
         <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
             <label>Course:</label>
-            <input list={listId} placeholder="e.g., CPEN 211" value={value} onChange={e => onChange(e.target.value)} onKeyDown={e => { if (e.key === "Enter") onSubmit(); }} style={{ padding:"8px 10px", borderRadius:8, border:"1px solid #2a3240", background:"#141820", color:"#e8edf2" }} />
-            <datalist id={listId}>{options.map(b => <option key={b} value={b} />)}</datalist>
-            <button onClick={onSubmit} style={{ padding:"8px 12px", borderRadius:8, border:"1px solid #2a3240", background:"#141820", color:"#e8edf2" }}>Load</button>
+            <input
+                list={listId}
+                placeholder="e.g., CPEN 211"
+                value={value}
+                onChange={e => onChange(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") onSubmit(); }}
+                style={{ padding:"8px 10px", borderRadius:8, border:"1px solid #2a3240", background:"#141820", color:"#e8edf2" }}
+            />
+            <datalist id={listId}>
+                {options.map(b => <option key={b} value={b} />)}
+            </datalist>
+            <button onClick={onSubmit} style={{ padding:"8px 12px", borderRadius:8, border:"1px solid #2a3240", background:"#141820", color:"#e8edf2" }}>
+                Load
+            </button>
         </div>
     );
-}
-
-const RE = /^([A-Z]{2,5})(?:_([A-Z]))?\s+(\d{3}[A-Z]?)$/;
-const toBase = (id: string) => {
-    const m = id.toUpperCase().match(RE);
-    return m ? `${m[1]} ${m[3]}` : id.toUpperCase();
-};
-
-function parseCompletedInput(s: string) {
-    return s.split(/[,\n]/).map(x => x.trim()).filter(Boolean).map(toBase);
 }
 
 export default function App() {
     const [bases, setBases] = useState<string[]>([]);
     const [q, setQ] = useState("");
     const [campus, setCampus] = useState<Campus>("AUTO");
+
     const [depth, setDepth] = useState(2);
     const [includeCoreq, setIncludeCoreq] = useState(true);
+
     const [course, setCourse] = useState<any>(null);
     const [graph, setGraph] = useState<any>(null);
-    const [grades, setGrades] = useState<Record<string, number | null>>({});
     const [err, setErr] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
-    const [selected, setSelected] = useState<Set<string>>(new Set());
-    const [completedFree, setCompletedFree] = useState<string[]>([]);
-    const [pickerText, setPickerText] = useState("");
-    const [completedText, setCompletedText] = useState("");
-    const [plans, setPlans] = useState<any>(null);
-    const [planErr, setPlanErr] = useState<string | null>(null);
-    const [planning, setPlanning] = useState(false);
-
+    // search as you type (bases only)
     useEffect(() => {
         let cancelled = false;
         (async () => {
             const term = q.trim();
             const list = await searchBases(term.length >= 2 ? term : "");
             if (!cancelled) setBases(list);
-        })().catch(() => {});
+        })().catch(console.error);
         return () => { cancelled = true; };
     }, [q]);
 
     useEffect(() => {
         if (!course?.base_id) return;
-        (async () => {
-            try {
-                const g = await fetchGraphBase(course.base_id, depth, includeCoreq, campus);
-                setGraph(g);
-                const basesSet = new Set<string>(g.nodes.map((id: string) => toBase(id)));
-                basesSet.add(course.base_id);
-                const entries = Array.from(basesSet);
-                const results = await Promise.all(entries.map(b => fetchGradeAverage(b, campus)));
-                const map: Record<string, number | null> = {};
-                for (const r of results) map[r.base] = r.average ?? null;
-                setGrades(map);
-            } catch (e:any) {
-                setGraph(null);
-            }
-        })();
+        fetchGraphBase(course.base_id, depth, includeCoreq, campus).then(setGraph).catch(e => setErr(String(e)));
     }, [course?.base_id, depth, includeCoreq, campus]);
 
     async function loadByInput() {
         const base = q.trim();
         if (!base) return;
-        await loadBase(base);
+        try {
+            await loadBase(base);
+        } catch (e:any) {
+            // fallback to first suggestion
+            const chosen = bases[0];
+            if (chosen) await loadBase(chosen);
+            else setErr(e?.message || String(e));
+        }
     }
 
     async function loadBase(baseId: string) {
@@ -87,11 +78,9 @@ export default function App() {
         try {
             const c = await fetchCourseBase(baseId, campus);
             setCourse(c);
-            setSelected(new Set());
-            setCompletedFree([]);
-            setCompletedText("");
-            setPlans(null);
-            setPlanErr(null);
+            const g = await fetchGraphBase(baseId, depth, includeCoreq, campus);
+            setGraph(g);
+            setQ(baseId);
         } catch (e:any) {
             setErr(e?.message || String(e));
             setCourse(null); setGraph(null);
@@ -102,38 +91,6 @@ export default function App() {
         try { return course?.tree_json ? JSON.parse(course.tree_json) : null; } catch { return null; }
     }, [course?.tree_json]);
 
-    function toggleSelected(b: string) {
-        setSelected(prev => {
-            const n = new Set(prev);
-            if (n.has(b)) n.delete(b); else n.add(b);
-            return n;
-        });
-    }
-
-    function addPicker() {
-        const b = toBase(pickerText.trim());
-        if (!b) return;
-        setCompletedFree(prev => prev.includes(b) ? prev : [...prev, b]);
-        setPickerText("");
-    }
-
-    async function doPlan() {
-        if (!course?.base_id) return;
-        setPlanning(true);
-        setPlanErr(null);
-        setPlans(null);
-        try {
-            const manualCompleted = parseCompletedInput(completedText);
-            const combined = Array.from(new Set<string>([...Array.from(selected), ...completedFree, ...manualCompleted]));
-            const r = await planTwoTerms(course.base_id, campus, combined);
-            setPlans(r);
-        } catch (e:any) {
-            setPlanErr(e.message || String(e));
-        } finally {
-            setPlanning(false);
-        }
-    }
-
     return (
         <div style={{ padding:16, color:"#e8edf2", background:"#0b0d10", minHeight:"100vh" }}>
             <h2 style={{ marginTop:0 }}>Prerequisite Viewer</h2>
@@ -141,13 +98,21 @@ export default function App() {
             <div style={{ display:"flex", gap:12, alignItems:"center", flexWrap:"wrap", marginBottom:12 }}>
                 <DatalistSearch options={bases} value={q} onChange={setQ} onSubmit={loadByInput} />
                 <label>Campus</label>
-                <select value={campus} onChange={(e) => setCampus(e.target.value as Campus)} style={{ padding:"8px 10px", borderRadius:8, border:"1px solid #2a3240", background:"#141820", color:"#e8edf2" }}>
+                <select
+                    value={campus}
+                    onChange={(e) => setCampus(e.target.value as Campus)}
+                    style={{ padding:"8px 10px", borderRadius:8, border:"1px solid #2a3240", background:"#141820", color:"#e8edf2" }}
+                >
                     <option value="AUTO">Auto</option>
                     <option value="V">Vancouver</option>
                     <option value="O">Okanagan</option>
                 </select>
+
                 <label>Depth</label>
-                <input type="number" min={1} max={6} value={depth} onChange={e => setDepth(Math.max(1, Math.min(6, Number(e.target.value) || 1)))} style={{ width:64, padding:"8px 10px", borderRadius:8, border:"1px solid #2a3240", background:"#141820", color:"#e8edf2" }} />
+                <input type="number" min={1} max={6} value={depth}
+                       onChange={e => setDepth(Math.max(1, Math.min(6, Number(e.target.value) || 1)))}
+                       style={{ width:64, padding:"8px 10px", borderRadius:8, border:"1px solid #2a3240", background:"#141820", color:"#e8edf2" }}
+                />
                 <label><input type="checkbox" checked={includeCoreq} onChange={e=>setIncludeCoreq(e.target.checked)} /> include co-reqs</label>
                 {loading && <span style={{ color:"#9aa7b1" }}>Loading…</span>}
                 {err && <span style={{ color:"#ffb4b4" }}>{err}</span>}
@@ -162,90 +127,38 @@ export default function App() {
                         {course.credits && <div style={{ opacity:.8, marginBottom:6 }}>Credits: {course.credits}</div>}
                         <div style={{ whiteSpace:"pre-wrap", color:"#9aa7b1" }}>{course.prereq_text || "(no extracted text)"}</div>
                         <hr style={{ borderColor:"#1e242e", margin:"12px 0" }} />
-                        <h4 style={{ margin:0 }}>Requirements</h4>
-                        <TreeView tree={tree} onToggle={toggleSelected} selected={selected} />
-                        <div style={{ marginTop:12, display:"grid", gap:8 }}>
-                            <div>Mark completed (for this course)</div>
-                            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-                                {Array.from(selected).map(b => (
-                                    <span key={b} onClick={()=>toggleSelected(b)} style={{ padding:"4px 8px", borderRadius:8, border:"1px solid #2a3240", background:"#20314a", cursor:"pointer" }}>{b} ×</span>
-                                ))}
-                                {completedFree.map(b => (
-                                    <span key={b} onClick={()=>setCompletedFree(prev => prev.filter(x => x!==b))} style={{ padding:"4px 8px", borderRadius:8, border:"1px solid #2a3240", background:"#20314a", cursor:"pointer" }}>{b} ×</span>
-                                ))}
-                            </div>
-                            <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
-                                <div>Add completed via picker</div>
-                                <input placeholder="Type base code e.g. PHYS 158" value={pickerText} onChange={e=>setPickerText(e.target.value)} style={{ padding:"8px 10px", borderRadius:8, border:"1px solid #2a3240", background:"#141820", color:"#e8edf2" }} />
-                                <button onClick={addPicker} style={{ padding:"8px 12px", borderRadius:8, border:"1px solid #2a3240", background:"#141820", color:"#e8edf2" }}>Add</button>
-                            </div>
-                        </div>
+                        <h4 style={{ margin:0 }}>Requirements Tree</h4>
+                        <TreeView tree={tree} />
                     </div>
 
-                    <div style={{ display:"grid", gap:12 }}>
-                        <div style={{ background:"#141820", border:"1px solid #1e242e", borderRadius:12, padding:12 }}>
-                            <h4 style={{ marginTop:0 }}>Graph</h4>
-                            {graph && (
-                                <>
-                                    <div style={{ display:"flex", gap:12, alignItems:"center", marginBottom:8 }}>
-                                        <span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><span style={{ width:14, height:2, background:"#5aa9e6", display:"inline-block" }} /> prereq</span>
-                                        <span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><span style={{ width:14, height:2, background:"#a78bfa", display:"inline-block" }} /> co-req</span>
-                                        <span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><span style={{ width:14, height:2, background:"#4ade80", display:"inline-block" }} /> credit granted</span>
-                                        <span style={{ display:"inline-flex", alignItems:"center", gap:6 }}><span style={{ width:14, height:2, background:"#9aa7b1", display:"inline-block" }} /> exclusion</span>
-                                    </div>
-                                    <GraphView
-                                        nodes={graph.nodes}
-                                        links={graph.links}
-                                        rootId={graph.actual_id ?? course.actual_id ?? course.id}
-                                        grades={grades}
-                                        onNodeClick={(id) => {
-                                            const m = id.match(RE);
-                                            const base = m ? `${m[1]} ${m[3]}` : id;
-                                            setQ(base);
-                                            (async () => {
-                                                try {
-                                                    const c = await fetchCourseBase(base, campus);
-                                                    setCourse(c);
-                                                } catch {}
-                                            })();
-                                        }}
-                                    />
-                                </>
-                            )}
-                        </div>
-
-                        <div style={{ background:"#141820", border:"1px solid #1e242e", borderRadius:12, padding:12 }}>
-                            <h4 style={{ marginTop:0 }}>Path Planner</h4>
-                            <div style={{ display:"grid", gap:8 }}>
-                                <div>Enter completed base codes (comma-separated)</div>
-                                <textarea rows={2} placeholder="e.g. MATH 101, PHYS 157" value={completedText} onChange={e=>setCompletedText(e.target.value)} style={{ padding:"8px 10px", borderRadius:8, border:"1px solid #2a3240", background:"#141820", color:"#e8edf2" }} />
-                                <button onClick={doPlan} disabled={planning} style={{ padding:"8px 12px", borderRadius:8, border:"1px solid #2a3240", background:"#141820", color:"#e8edf2", width:"fit-content" }}>
-                                    {planning ? "Planning…" : `Plan path to ${course.base_id}`}
-                                </button>
-                                {planErr && <div style={{ color:"#ffb4b4" }}>{planErr}</div>}
-                                {!plans ? null : (
-                                    <>
-                                        {plans.plan && (plans.plan.term1.length > 0 || plans.plan.term2.length > 0) ? (
-                                            <>
-                                                <div>2-term plan</div>
-                                                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-                                                    <div>
-                                                        <div style={{ opacity:.8, marginBottom:6 }}>Term 1</div>
-                                                        <div>{plans.plan.term1.length ? plans.plan.term1.join(", ") : "(none)"}</div>
-                                                    </div>
-                                                    <div>
-                                                        <div style={{ opacity:.8, marginBottom:6 }}>Term 2</div>
-                                                        <div>{plans.plan.term2.length ? plans.plan.term2.join(", ") : "(none)"}</div>
-                                                    </div>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <div style={{ color:"#ffb4b4" }}>no 2-term plan</div>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        </div>
+                    <div style={{ background:"#141820", border:"1px solid #1e242e", borderRadius:12, padding:12 }}>
+                        <h4 style={{ marginTop:0 }}>Graph</h4>
+                        <Legend />
+                        {!graph ? (
+                            <div style={{ color:"#9aa7b1" }}>No graph yet. Load a course.</div>
+                        ) : (
+                            <GraphView
+                                key={(graph.actual_id ?? course.actual_id ?? course.id) + "|" + campus + "|" + depth + "|" + (includeCoreq ? "C" : "N")}
+                                nodes={graph.nodes}
+                                links={graph.links}
+                                rootId={graph.actual_id ?? course.actual_id ?? course.id}
+                                onNodeClick={(id) => {
+                                    const m = id.match(/^([A-Z]{2,5})(?:_([A-Z]))?\s+(\d{3}[A-Z]?)$/);
+                                    const base = m ? `${m[1]} ${m[3]}` : id;
+                                    setQ(base);
+                                    (async () => {
+                                        try {
+                                            const c = await fetchCourseBase(base, campus);
+                                            setCourse(c);
+                                            const g = await fetchGraphBase(base, depth, includeCoreq, campus);
+                                            setGraph(g);
+                                        } catch (e: any) {
+                                            setErr(e?.message || String(e));
+                                        }
+                                    })();
+                                }}
+                            />
+                        )}
                     </div>
                 </div>
             )}
