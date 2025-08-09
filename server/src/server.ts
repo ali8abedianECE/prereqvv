@@ -52,10 +52,21 @@ function resolveActualId(base: string, campus?: string | null): string | null {
     return e.ids["V"] || e.ids["O"] || Object.values(e.ids)[0] || null;
 }
 
-// ---- utils: keep only the component reachable from root (undirected) ----
+// ---- utils for grades + pruning ----
+const BASE_RE = /^([A-Z]{2,5})\s+(\d{3}[A-Z]?)$/;
+function subjectCourseFromBase(base: string) {
+    const m = base.toUpperCase().match(BASE_RE);
+    return m ? { subject: m[1], course: m[2] } : null;
+}
+function campusToUBC(campus?: string | null) {
+    const c = (campus || "").toUpperCase();
+    if (c === "O") return "UBCO";
+    return "UBCV";
+}
+
 type Link = { source: string; target: string; kind: string; group_id?: string | null };
 
-function pruneToConnected(root: string, nodesSet: Set<string>, links: Link[]) {
+function pruneToConnected(root: string, _nodes: Set<string>, links: Link[]) {
     const adj = new Map<string, string[]>();
     for (const { source, target } of links) {
         (adj.get(source) || adj.set(source, []).get(source)!).push(target);
@@ -135,7 +146,7 @@ app.get("/api/graph_base/:base", (req, res) => {
             .all(target) as any[];
         for (const e of rowEdges) {
             if (!includeCoreq && e.kind === "CO_REQ") continue;
-            if (e.kind === "CREDIT" || e.kind === "EXCLUSION") continue; // handled outbound from root
+            if (e.kind === "CREDIT" || e.kind === "EXCLUSION") continue; // already added outbound
             nodes.add(e.source_id);
             nodes.add(e.target_id);
             links.push({
@@ -159,9 +170,72 @@ app.get("/api/graph_base/:base", (req, res) => {
         frontier = next;
     }
 
-    // prune to the root's connected component so no stray islands appear
     const pruned = pruneToConnected(rootId, nodes, links);
     res.json({ ...pruned, base_id: base, actual_id: rootId });
+});
+
+// ---- grades proxy ----
+app.get("/api/grades/:campus/:subject/:course", async (req, res) => {
+    try {
+        const campusParam = (req.params.campus || "V").toUpperCase(); // V/O
+        const campusUBC = campusToUBC(campusParam);
+        const subject = req.params.subject.toUpperCase();
+        const course = req.params.course.toUpperCase();
+
+        const url = `https://ubcgrades.com/api/recent-section-averages/${campusUBC}/${subject}/${course}`;
+        const r = await fetch(url, { redirect: "follow" });
+        if (!r.ok) return res.status(r.status).json({ error: `ubcgrades ${r.status}` });
+        const arr = (await r.json()) as Array<{
+            average: number; campus: string; course: string; detail: string;
+            section: string; session: string; year: string;
+        }>;
+
+        const overall = arr.filter((x) => x.section === "OVERALL");
+        const latest = overall.sort((a, b) => Number(b.year) - Number(a.year))[0] || arr[0];
+        const latestAverage = latest ? Number(latest.average) : null;
+
+        res.json({
+            campus: campusUBC,
+            subject,
+            course,
+            latestAverage,
+            series: overall.length ? overall : arr,
+        });
+    } catch (e: any) {
+        res.status(500).json({ error: String(e?.message || e) });
+    }
+});
+
+app.get("/api/grades_batch", async (req, res) => {
+    try {
+        const campus = String(req.query.campus || "V").toUpperCase(); // V/O
+        const campusUBC = campusToUBC(campus);
+        const basesParam = String(req.query.bases || "").trim();
+        if (!basesParam) return res.json({ items: [] });
+
+        const bases = Array.from(new Set(basesParam.split(",").map((s) => s.trim()).filter(Boolean)));
+        const tasks = bases.map(async (base_id) => {
+            const sc = subjectCourseFromBase(base_id);
+            if (!sc) return { base_id, latestAverage: null, series: [] as any[] };
+            const url = `https://ubcgrades.com/api/recent-section-averages/${campusUBC}/${sc.subject}/${sc.course}`;
+            const r = await fetch(url);
+            if (!r.ok) return { base_id, latestAverage: null, series: [] as any[] };
+
+            const arr = (await r.json()) as any[];
+            const overall = arr.filter((x: any) => x.section === "OVERALL");
+            const latest = overall.sort((a: any, b: any) => Number(b.year) - Number(a.year))[0] || arr[0];
+            return {
+                base_id,
+                latestAverage: latest ? Number(latest.average) : null,
+                series: overall.length ? overall : arr,
+            };
+        });
+
+        const results = await Promise.all(tasks);
+        res.json({ campus: campusUBC, items: results });
+    } catch (e: any) {
+        res.status(500).json({ error: String(e?.message || e) });
+    }
 });
 
 // ---- legacy endpoints (optional) ----
@@ -176,12 +250,12 @@ app.get("/api/search", (req, res) => {
     const rows = db
         .prepare(
             `
-                SELECT id FROM courses WHERE id = ?
-                UNION
-                SELECT id FROM courses WHERE id LIKE ? ESCAPE '\\' AND id <> ?
-                ORDER BY id
-                    LIMIT 50
-            `
+      SELECT id FROM courses WHERE id = ?
+      UNION
+      SELECT id FROM courses WHERE id LIKE ? ESCAPE '\\' AND id <> ?
+      ORDER BY id
+      LIMIT 50
+      `
         )
         .all(qRaw, like, qRaw);
     res.json(rows.map((r: any) => r.id));

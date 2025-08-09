@@ -3,24 +3,31 @@ import * as d3 from "d3";
 
 type Link = { source: string; target: string; kind?: string; group_id?: string | null };
 
+const BASE_RE = /^([A-Z]{2,5})(?:_([A-Z]))?\s+(\d{3}[A-Z]?)$/;
+const toBase = (id: string) => {
+    const m = id.match(BASE_RE);
+    return m ? `${m[1]} ${m[3]}` : id.toUpperCase();
+};
+
 export default function GraphView({
                                       nodes,
                                       links,
                                       rootId,
+                                      grades,
                                       onNodeClick,
                                   }: {
     nodes: string[];
     links: Link[];
     rootId?: string;
+    grades?: Record<string, number>;
     onNodeClick?: (id: string) => void;
 }) {
     const svgRef = useRef<SVGSVGElement | null>(null);
 
-    // compute depth (0 = root) using reversed edges of inbound deps
+    // compute depth (0 = root) using reversed inbound edges
     const depthMap = useMemo(() => {
         const rev = new Map<string, string[]>();
         for (const e of links) {
-            // only treat REQ/CO_REQ as inbound for depth
             if (e.kind === "CREDIT" || e.kind === "EXCLUSION") continue;
             const arr = rev.get(e.target) || [];
             arr.push(e.source);
@@ -121,10 +128,16 @@ export default function GraphView({
                         ? "url(#arrow-excl)"
                         : "url(#arrow-req)";
 
+        // 60 -> red, 80 -> green, clamp; smooth yellow midpoint
+        const gradeColor = (avg: number) => {
+            const t = Math.max(0, Math.min(1, (avg - 60) / 20));
+            return d3.interpolateRgbBasis(["#ef4444", "#f59e0b", "#22c55e"])(t);
+        };
+
         const nodeOpacity = (id: string) => {
             if (!depthMap.size) return 0.95;
             const d = depthMap.get(id);
-            if (d === undefined) return 0.65; // non-prereq (e.g., credit-only)
+            if (d === undefined) return 0.65; // credit-only node etc.
             return d === 0 ? 1.0 : d === 1 ? 0.9 : d === 2 ? 0.75 : 0.6;
         };
 
@@ -143,7 +156,7 @@ export default function GraphView({
             .attr("marker-end", (d: any) => edgeMarker(d.kind));
 
         // --- nodes ---
-        const node = g
+        const circles = g
             .append("g")
             .attr("class", "nodes")
             .selectAll("circle")
@@ -151,13 +164,26 @@ export default function GraphView({
             .enter()
             .append("circle")
             .attr("r", 8)
-            .attr("fill", (d: any) => (d.id === rootId ? COLORS.nodeRoot : COLORS.nodeFill))
+            .attr("fill", (d: any) => {
+                if (d.id === rootId) return COLORS.nodeRoot;
+                const base = toBase(d.id);
+                const avg = grades?.[base];
+                return typeof avg === "number" ? gradeColor(avg) : COLORS.nodeFill;
+            })
             .attr("opacity", (d: any) => nodeOpacity(d.id))
             .attr("stroke", COLORS.nodeStroke)
             .attr("stroke-width", 1.2)
             .attr("vector-effect", "non-scaling-stroke")
             .style("cursor", onNodeClick ? "pointer" : "default")
             .on("click", (_, d: any) => onNodeClick?.(d.id));
+
+        circles
+            .append("title")
+            .text((d: any) => {
+                const base = toBase(d.id);
+                const avg = grades?.[base];
+                return avg != null ? `${d.id}\nAvg: ${avg.toFixed(1)}` : d.id;
+            });
 
         // labels
         const label = g
@@ -181,7 +207,7 @@ export default function GraphView({
                 .attr("x2", (d: any) => d.target.x as number)
                 .attr("y2", (d: any) => d.target.y as number);
 
-            node.attr("cx", (d: any) => d.x as number).attr("cy", (d: any) => d.y as number);
+            circles.attr("cx", (d: any) => d.x as number).attr("cy", (d: any) => d.y as number);
             label.attr("x", (d: any) => d.x as number).attr("y", (d: any) => (d.y as number) - 12);
         });
 
@@ -196,7 +222,7 @@ export default function GraphView({
         svg.call(zoom as any);
 
         return () => simulation.stop();
-    }, [nodes, links, depthMap, rootId, onNodeClick]);
+    }, [nodes, links, depthMap, rootId, grades, onNodeClick]);
 
     return (
         <svg
