@@ -1,48 +1,39 @@
-export async function searchBases(q: string): Promise<string[]> {
-    const r = await fetch(`/api/search_base?q=${encodeURIComponent(q)}`);
-    if (!r.ok) throw new Error(`search ${r.status}`);
+const API = import.meta.env.VITE_API_BASE || "http://localhost:3001";
+
+export async function searchBases(q: string) {
+    const r = await fetch(`${API}/api/search_base?q=${encodeURIComponent(q)}`);
+    if (!r.ok) throw new Error("search failed");
     return r.json();
 }
 
-export async function fetchCourseBase(baseId: string, campus: "AUTO" | "V" | "O") {
-    const c = campus === "O" ? "O" : campus === "V" ? "V" : "AUTO";
-    const r = await fetch(
-        `/api/course_base/${encodeURIComponent(baseId)}?campus=${encodeURIComponent(c)}`
-    );
-    if (!r.ok) throw new Error(`course ${r.status}`);
+export async function fetchCourseBase(baseId: string, campus: string | null) {
+    const r = await fetch(`${API}/api/course_base/${encodeURIComponent(baseId)}?campus=${encodeURIComponent(campus || "")}`);
+    const j = await r.json();
+    if (!r.ok) throw new Error(j?.error || "course fetch failed");
+    return j;
+}
+
+export async function fetchGraphBase(baseId: string, depth: number, includeCoreq: boolean, campus: string | null) {
+    const u = `${API}/api/graph_base/${encodeURIComponent(baseId)}?depth=${depth}&includeCoreq=${includeCoreq ? "true" : "false"}&campus=${encodeURIComponent(campus || "")}`;
+    const r = await fetch(u);
+    const j = await r.json();
+    if (!r.ok) throw new Error(j?.error || "graph fetch failed");
+    return j;
+}
+
+export async function fetchGradeAverage(baseId: string, campus: string | null) {
+    const r = await fetch(`${API}/api/grades_base/${encodeURIComponent(baseId)}?campus=${encodeURIComponent(campus || "")}`);
+    if (!r.ok) return { base: baseId, average: null };
     return r.json();
 }
 
-export async function fetchGraphBase(
-    baseId: string,
-    depth: number,
-    includeCoreq: boolean,
-    campus: "AUTO" | "V" | "O"
-) {
-    const c = campus === "O" ? "O" : campus === "V" ? "V" : "AUTO";
-    const qs = new URLSearchParams({
-        depth: String(depth),
-        includeCoreq: String(!!includeCoreq),
-        campus: c,
+export async function planTwoTerms(baseId: string, campus: string | null, completed: string[]) {
+    const r = await fetch(`${API}/api/plan_base/${encodeURIComponent(baseId)}?campus=${encodeURIComponent(campus || "")}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed }),
     });
-    const r = await fetch(`/api/graph_base/${encodeURIComponent(baseId)}?${qs.toString()}`);
-    if (!r.ok) throw new Error(`graph ${r.status}`);
-    return r.json();
-}
-
-export async function fetchGradesBatch(
-    bases: string[],
-    campus: "AUTO" | "V" | "O"
-): Promise<Record<string, number>> {
-    const c = campus === "O" ? "O" : "V"; // AUTO -> V default
-    if (!bases.length) return {};
-    const q = encodeURIComponent(bases.join(","));
-    const r = await fetch(`/api/grades_batch?campus=${c}&bases=${q}`);
-    if (!r.ok) throw new Error(`grades ${r.status}`);
-    const data = await r.json();
-    const out: Record<string, number> = {};
-    for (const it of data.items as Array<{ base_id: string; latestAverage: number | null }>) {
-        if (typeof it.latestAverage === "number") out[it.base_id] = it.latestAverage;
-    }
-    return out;
+    const j = await r.json();
+    if (!r.ok) throw new Error(j?.error || "plan failed");
+    return j;
 }
