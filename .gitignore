@@ -22,3 +22,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+/server/prereqs.db-wal
+/server/prereqs.db-shm
