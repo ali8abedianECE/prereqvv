@@ -1,0 +1,65 @@
+/* src/app.css */
+:root{
+    --bg: #0b0d10;
+    --panel: #141820;
+    --panel-2: #0e1520;
+    --border: #1e242e;
+    --muted: #9aa7b1;
+    --accent: #2e6db4;   /* UBC-ish blue */
+    --accent-2: #002145; /* darker UBC navy */
+}
+
+html, body, #root { height: 100%; background: var(--bg); color: #e8edf2; }
+
+.sidebar {
+    width: 260px;
+    background: linear-gradient(180deg, var(--accent-2), #0a1626 40%, var(--panel-2));
+    border-right: 1px solid var(--border);
+}
+
+.sidebar .box {
+    background: rgba(20, 24, 32, .85);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+}
+
+.tabbar {
+    border-bottom: 1px solid var(--border);
+    background: #0c121a;
+}
+.tab {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-bottom-color: transparent;
+    background: var(--panel);
+    border-radius: 10px 10px 0 0;
+    margin-right: 8px;
+    cursor: pointer;
+}
+.tab.active {
+    background: var(--bg);
+}
+.tab .close {
+    color: #ff8a8a; margin-left: 8px; cursor: pointer;
+}
+.table-tight {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.table-tight th, .table-tight td {
+    padding: 6px; border-top: 1px solid var(--border);
+}
+.table-tight thead th { color: var(--muted); font-weight: 600; text-align: left; }
+
+.frame {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--panel);
+    padding: 12px;
+}
+
+.axis-label {
+    color: var(--muted);
+    font-weight: 600;
+    letter-spacing: .3px;
+}

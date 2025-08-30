@@ -1,51 +1,29 @@
-// src/viz.ts
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
+// src/api/viz.ts
+import { getJSON2 } from "./http";
 
-async function getJSON<T>(url: string): Promise<T> {
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-    return r.json();
-}
-
-export type CourseStatRow = {
-    course_code: string;
-    tid: string | null;
-    avg_rating: number | null;
-    avg_difficulty: number | null;
-    would_take_again_pct: number | null;
-    num_ratings: number | null;
+export type VizProfessor = {
+    legacy_id: string;
+    first_name: string;
+    last_name: string;
+    department?: string | null;
+    avg_rating?: number | null;
+    avg_difficulty?: number | null;
+    num_ratings?: number | null;
+    would_take_again_pct?: number | null;
 };
 
-export type SectionRow = {
-    campus: string | null;
-    subject: string;
-    course: string;
-    section: string;
-    year: number;
-    session: string;
-    title: string;
-    instructor: string;
-    enrolled: number | null;
-    avg: number | null;
-    rmp_tid: string | null;
-    avg_rating: number | null;
-    avg_difficulty: number | null;
-    would_take_again_pct: number | null;
-    num_ratings: number | null;
-};
-
-export async function fetchCourseStats(courseCode: string) {
-    const url = new URL(`${API_BASE}/api/viz/course-stats`);
-    url.searchParams.set("course_code", courseCode.replace(/\s+/g, ""));
-    return getJSON<CourseStatRow[]>(url.toString());
+export function fetchVizProfessors(opts?: { limit?: number; q?: string; dept?: string }) {
+    const p = new URLSearchParams();
+    p.set("limit", String(opts?.limit ?? 500));
+    if (opts?.q) p.set("q", opts.q);
+    if (opts?.dept) p.set("dept", opts.dept);
+    return getJSON2<VizProfessor[]>(`/api/viz/professors?` + p.toString());
 }
 
-export async function fetchSections(subject: string, course: string) {
-    const url = new URL(`${API_BASE}/api/viz/sections`);
-    url.searchParams.set("subject", subject.toUpperCase());
-    url.searchParams.set("course", course.toUpperCase());
-    return getJSON<SectionRow[]>(url.toString());
+export function fetchVizSections(subject: string, course: string) {
+    return getJSON2(`/api/viz/sections?subject=${encodeURIComponent(subject)}&course=${encodeURIComponent(course)}`);
 }
 
-export const rmpLink = (tid?: string | null) =>
-    tid ? `https://www.ratemyprofessors.com/professor/${tid}` : "";
+export function fetchVizCourseStats(courseCode: string) {
+    return getJSON2(`/api/viz/course_stats?course_code=${encodeURIComponent(courseCode)}`);
+}

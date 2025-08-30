@@ -1,4 +1,4 @@
-const API = import.meta.env.VITE_API_BASE || "http://localhost:3001";
+const API = (import.meta as any).env.VITE_API_BASE || "";
 
 export type Link = { source: string; target: string; kind: string; group_id?: string | null };
 
