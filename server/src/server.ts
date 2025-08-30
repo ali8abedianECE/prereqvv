@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import Database from "better-sqlite3";
 import path from "path";
+import createVizRouter from "./viz_api.ts";
+
 
 const DB_FILE = process.env.DB_FILE || path.resolve("prereqs.db");
 const db = new Database(DB_FILE, { readonly: false });
@@ -78,6 +80,8 @@ app.get("/api/search_base", (req, res) => {
     const filtered = q ? bases.filter((b) => b.includes(q)) : bases.slice(0, 200);
     res.json(filtered.slice(0, 50));
 });
+
+app.use("/api/viz", createVizRouter(db));
 
 app.get("/api/course_base/:base", (req, res) => {
     const base = req.params.base.toUpperCase();
