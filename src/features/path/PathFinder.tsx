@@ -12,17 +12,11 @@ import {
 import TreeView from "../../components/TreeView";
 import GraphView from "../../components/GraphView";
 
-/** ────────────────────────── Local types ────────────────────────── */
+/** ───────────────── helpers ───────────────── */
 type Link = { source: string; target: string; kind: string; group_id?: string | null };
-type GraphPayload = {
-    nodes: string[];
-    links: Link[];
-    base_id: string;
-    actual_id: string;
-};
+type GraphPayload = { nodes: string[]; links: Link[]; base_id: string; actual_id: string };
 
 function parseCompletedInput(s: string) {
-    // supports commas or newlines
     return s
         .split(/[,\n]/g)
         .map((x) => x.trim())
@@ -30,7 +24,6 @@ function parseCompletedInput(s: string) {
         .map(toBase);
 }
 
-/** Autocomplete course input with &lt;datalist&gt; fed from /api/search_base */
 function DatalistSearch({
                             options,
                             value,
@@ -62,7 +55,7 @@ function DatalistSearch({
     );
 }
 
-/** ────────────────────────── Main component ────────────────────────── */
+/** ───────────────── main ───────────────── */
 export default function PathFinder({ defaultBase }: { defaultBase?: string }) {
     // query & suggestions
     const [q, setQ] = React.useState(defaultBase ?? "");
@@ -89,7 +82,7 @@ export default function PathFinder({ defaultBase }: { defaultBase?: string }) {
     const [planErr, setPlanErr] = React.useState<string | null>(null);
     const [planning, setPlanning] = React.useState(false);
 
-    /** Suggestions for the course box */
+    /** suggestions for the course box */
     React.useEffect(() => {
         let stop = false;
         (async () => {
@@ -102,7 +95,7 @@ export default function PathFinder({ defaultBase }: { defaultBase?: string }) {
         };
     }, [q]);
 
-    /** Load one course “base” (e.g., CPEN 211) */
+    /** load one base (e.g. CPEN 211) */
     async function loadBase(baseId: string) {
         if (!baseId.trim()) return;
         const base = toBase(baseId);
@@ -127,7 +120,7 @@ export default function PathFinder({ defaultBase }: { defaultBase?: string }) {
         }
     }
 
-    /** Fetch graph + grade averages when course changes or controls change */
+    /** fetch graph + grade avgs when course/controls change */
     React.useEffect(() => {
         let stop = false;
         async function run() {
@@ -137,7 +130,6 @@ export default function PathFinder({ defaultBase }: { defaultBase?: string }) {
                 if (stop) return;
                 setGraph(g);
 
-                // Collect bases for grade averages
                 const nodes = new Set<string>(g.nodes.map((id: string) => toBase(id)));
                 nodes.add(course.base_id);
 
@@ -148,7 +140,7 @@ export default function PathFinder({ defaultBase }: { defaultBase?: string }) {
                 const map: Record<string, number | null> = {};
                 for (const r of results) map[r.base] = r?.average ?? null;
                 setGrades(map);
-            } catch (e: any) {
+            } catch {
                 if (!stop) setGraph(null);
             }
         }
@@ -158,7 +150,7 @@ export default function PathFinder({ defaultBase }: { defaultBase?: string }) {
         };
     }, [course?.base_id, depth, includeCoreq, campus]);
 
-    /** Requirements tree (JSON string on course tree_json) */
+    /** requirements tree */
     const tree = React.useMemo(() => {
         try {
             return course?.tree_json ? JSON.parse(course.tree_json) : null;
@@ -167,7 +159,6 @@ export default function PathFinder({ defaultBase }: { defaultBase?: string }) {
         }
     }, [course?.tree_json]);
 
-    /** Toggle course in “completed (for this course)” badge list */
     function toggleSelected(b: string) {
         setSelected((prev) => {
             const n = new Set(prev);
@@ -201,11 +192,25 @@ export default function PathFinder({ defaultBase }: { defaultBase?: string }) {
         }
     }
 
-    /** UI */
+    /** ─────────────── layout: info left, graph right ───────────────
+     * This container is pinned to the viewport height so the page doesn’t scroll.
+     * Only the LEFT card will scroll internally if its content is long.
+     */
+    const SHELL_H = "calc(100dvh - 120px)"; // leave room for tab bar/header; tweak if needed
+
     return (
-        <div className="grid-2">
-            {/* Left column: controls, requirements, planning */}
-            <div className="card">
+        <div
+            style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(420px, 560px) 1fr",
+                gap: 12,
+                alignItems: "stretch",
+                height: SHELL_H,
+                overflow: "hidden", // page stays fixed height
+            }}
+        >
+            {/* LEFT: info / controls — scroll only here */}
+            <div className="card" style={{ minHeight: 0, overflowY: "auto", paddingBottom: 12 }}>
                 <div className="card-h">
                     <h3>Path Finder</h3>
                     {loading && <span className="muted">Loading…</span>}
@@ -213,30 +218,33 @@ export default function PathFinder({ defaultBase }: { defaultBase?: string }) {
                 </div>
 
                 {/* Top controls */}
-                <div className="toolbar" style={{ marginBottom: 12 }}>
+                <div className="toolbar" style={{ marginBottom: 12, position: "sticky", top: 0, background: "var(--bg, #0e1520)", zIndex: 1, paddingTop: 4 }}>
                     <DatalistSearch options={bases} value={q} onChange={setQ} onSubmit={() => loadBase(q)} />
-                    <label>Campus</label>
-                    <select value={campus} onChange={(e) => setCampus(e.target.value as Campus)}>
-                        <option value="AUTO">Auto</option>
-                        <option value="V">Vancouver</option>
-                        <option value="O">Okanagan</option>
-                    </select>
-                    <label>Depth</label>
-                    <input
-                        type="number"
-                        min={1}
-                        max={6}
-                        value={depth}
-                        onChange={(e) => {
-                            const v = Math.max(1, Math.min(6, Number(e.target.value) || 1));
-                            setDepth(v);
-                        }}
-                        style={{ width: 64 }}
-                    />
-                    <label style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                        <input type="checkbox" checked={includeCoreq} onChange={(e) => setIncludeCoreq(e.target.checked)} />
-                        include co-reqs
-                    </label>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
+                        <label>Campus</label>
+                        <select value={campus} onChange={(e) => setCampus(e.target.value as Campus)}>
+                            <option value="AUTO">Auto</option>
+                            <option value="V">Vancouver</option>
+                            <option value="O">Okanagan</option>
+                        </select>
+                        <label>Depth</label>
+                        <input
+                            type="number"
+                            min={1}
+                            max={6}
+                            value={depth}
+                            onChange={(e) => {
+                                const v = Math.max(1, Math.min(6, Number(e.target.value) || 1));
+                                setDepth(v);
+                            }}
+                            style={{ width: 64 }}
+                        />
+                        <label style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                            <input type="checkbox" checked={includeCoreq} onChange={(e) => setIncludeCoreq(e.target.checked)} />
+                            include co-reqs
+                        </label>
+                    </div>
+                    {err && <div className="error" style={{ marginTop: 6 }}>{err}</div>}
                 </div>
 
                 {!course ? (
@@ -246,7 +254,10 @@ export default function PathFinder({ defaultBase }: { defaultBase?: string }) {
                         {/* Course header */}
                         <div>
                             <h3 style={{ marginTop: 0 }}>
-                                {course.base_id} <span className="muted" style={{ fontWeight: 400 }}>(actual: {course.actual_id})</span>
+                                {course.base_id}{" "}
+                                <span className="muted" style={{ fontWeight: 400 }}>
+                  (actual: {course.actual_id})
+                </span>
                             </h3>
                             {course.credits && (
                                 <div className="muted" style={{ marginBottom: 6 }}>
@@ -258,7 +269,7 @@ export default function PathFinder({ defaultBase }: { defaultBase?: string }) {
                             </div>
                         </div>
 
-                        {/* Tree requirements */}
+                        {/* Requirements */}
                         <div>
                             <h4 style={{ margin: "8px 0" }}>Requirements</h4>
                             <TreeView tree={tree} onToggle={toggleSelected} selected={selected} />
@@ -366,9 +377,9 @@ export default function PathFinder({ defaultBase }: { defaultBase?: string }) {
                 )}
             </div>
 
-            {/* Right column: graph */}
-            <div className="card">
-                <div className="card-h">
+            {/* RIGHT: graph — unchanged; no page scroll */}
+            <div className="card" style={{ minHeight: 0, display: "flex", flexDirection: "column" }}>
+                <div className="card-h" style={{ alignItems: "baseline" }}>
                     <h3>Graph</h3>
                     <span className="muted" style={{ marginLeft: "auto" }}>
             Click nodes to jump; wheel to zoom/pan (inside the graph)
@@ -396,20 +407,22 @@ export default function PathFinder({ defaultBase }: { defaultBase?: string }) {
               </span>
                         </div>
 
-                        <GraphView
-                            nodes={graph.nodes}
-                            links={graph.links}
-                            rootId={graph.actual_id}
-                            grades={grades}
-                            onNodeClick={(id: string) => {
-                                // Node ids may be "SUBJ 123" or "SUBJ_? 123" — normalize to base
-                                const parts = id.replace(/\s+/, " ").split(" ");
-                                const normalized = parts.length >= 2 ? `${parts[0].replace(/_.*/, "")} ${parts[1]}` : id;
-                                setQ(normalized);
-                                // Load that node as the new center
-                                loadBase(normalized);
-                            }}
-                        />
+                        {/* GraphView stays exactly as before */}
+                        <div style={{ flex: 1, minHeight: 0 }}>
+                            <GraphView
+                                nodes={graph.nodes}
+                                links={graph.links}
+                                rootId={graph.actual_id}
+                                grades={grades}
+                                onNodeClick={(id: string) => {
+                                    // Normalize like before
+                                    const parts = id.replace(/\s+/, " ").split(" ");
+                                    const normalized = parts.length >= 2 ? `${parts[0].replace(/_.*/, "")} ${parts[1]}` : id;
+                                    setQ(normalized);
+                                    loadBase(normalized);
+                                }}
+                            />
+                        </div>
                     </>
                 ) : (
                     <div className="muted">No graph loaded yet.</div>

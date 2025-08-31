@@ -146,3 +146,45 @@ canvas{ display:block; }
 /* ---------- Links ---------- */
 a{ color:#7ab7ff; text-decoration:none; }
 a:hover{ text-decoration:underline; }
+
+.card .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    align-items: center;
+}
+.card .toolbar label {
+    color: #9aa7b1;
+    font-size: 12px;
+    margin-right: 4px;
+}
+
+/* styles.css (or app.css) */
+
+.card {
+    background: #0f151e;
+    border: 1px solid #1e2733;
+    border-radius: 12px;
+    padding: 12px;
+}
+
+button, .ghost {
+    border-radius: 10px;
+}
+
+input, select {
+    background: #0c1219;
+    border: 1px solid #1e2430;
+    color: #dce3ea;
+    border-radius: 10px;
+    padding: 6px 8px;
+}
+
+input:focus, select:focus, button:focus {
+    outline: 2px solid #2c4370;
+    outline-offset: 0;
+}
+
+h3, h4 {
+    margin: 8px 0;
+}
