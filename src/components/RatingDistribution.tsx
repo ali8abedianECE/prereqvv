@@ -1,13 +1,18 @@
-export default function RatingDistribution({ dist }: { dist: Record<string, number> }) {
-    const bins = ["<50","50-54","55-59","60-63","64-67","68-71","72-75","76-79","80-84","85-89","90-100"];
-    const vals = bins.map(b=> dist?.[b] ?? 0);
-    const max = Math.max(1, ...vals);
+export default function RatingDistribution({ values }: { values: number[] }) {
+    const bins = new Array(20).fill(0); // 1..5 in 0.2 steps
+    for (const v of values) {
+        if (v == null || Number.isNaN(v)) continue;
+        const clamped = Math.max(1, Math.min(5, v));
+        const idx = Math.min(19, Math.floor((clamped - 1) / 0.2));
+        bins[idx]++;
+    }
+    const max = Math.max(1, ...bins);
     return (
-        <div style={{ display:"flex", gap:6, alignItems:"end", height:120, border:"1px solid #e2e8f0", padding:8, borderRadius:6, overflowX:"auto" }}>
-            {vals.map((v,i)=>(
-                <div key={i} title={`${bins[i]}: ${v}`} style={{ width:28, height:Math.round((v/max)*100), background:"#003145" }}>
-                    <div style={{ transform:"translateY(110%)", fontSize:10, whiteSpace:"nowrap" }}>{bins[i]}</div>
-                </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(20,1fr)", gap: 2, alignItems: "end", height: 90 }}>
+            {bins.map((b, i) => (
+                <div key={i}
+                     title={`${(1 + i * 0.2).toFixed(1)}–${(1 + (i + 1) * 0.2).toFixed(1)}: ${b}`}
+                     style={{ height: `${(b / max) * 100}%`, background: "#5e8df5", borderRadius: 2 }} />
             ))}
         </div>
     );

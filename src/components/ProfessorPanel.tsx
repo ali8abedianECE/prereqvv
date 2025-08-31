@@ -1,70 +1,124 @@
 import { useEffect, useMemo, useState } from "react";
-import { CourseData, Professor } from "../lib/types";
+import { fetchProfessor, fetchSectionsByProf as fetchSectionsByProfessor } from "../api/viz";
 import RatingDistribution from "./RatingDistribution";
 
-export default function ProfessorPanel({ prof }: { prof: Professor | null }) {
-    const [rows, setRows] = useState<CourseData[]>([]);
-    useEffect(()=>{ if(!prof){setRows([]);return;} fetch(`/api/professors/${prof.legacyId}/sections`).then(r=>r.json()).then(setRows); },[prof]);
+type Props = {
+    tid: string;
+    anchor: { x: number; y: number } | null; // place near cursor
+    onClose: () => void;
+};
 
-    const overallAvg = useMemo(()=>{
-        const xs = rows.map(r=>r.avg).filter((n):n is number => typeof n==="number");
-        if (!xs.length) return null;
-        return xs.reduce((a,b)=>a+b,0)/xs.length;
-    },[rows]);
+export default function ProfessorPanel({ tid, anchor, onClose }: Props) {
+    const [prof, setProf] = useState<VizProfessor | null>(null);
+    const [rows, setRows] = useState<VizSection[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [err, setErr] = useState<string | null>(null);
 
-    const dist = useMemo(()=>{
-        const acc:Record<string,number> = {};
-        for (const r of rows) for (const [k,v] of Object.entries(r.gradeDistribution||{})) acc[k]=(acc[k]||0)+(v||0);
-        return acc;
-    },[rows]);
+    useEffect(() => {
+        let stop = false;
+        (async () => {
+            setLoading(true); setErr(null);
+            try {
+                const [p, s] = await Promise.all([
+                    fetchProfessor(tid),
+                    fetchSectionsByProfessor(tid),
+                ]);
+                if (!stop) { setProf(p); setRows(s); }
+            } catch (e: any) {
+                if (!stop) setErr(e?.message || String(e));
+            } finally {
+                if (!stop) setLoading(false);
+            }
+        })();
+        return () => { stop = true; };
+    }, [tid]);
+
+    const name = prof ? `${prof.first_name} ${prof.last_name}` : `tid ${tid}`;
+    const ratingsForHist = useMemo(() => rows.map(r => Number(r.avg_rating ?? NaN)).filter(n => !Number.isNaN(n)), [rows]);
+
+    const style: React.CSSProperties = anchor
+        ? { position: "fixed", left: Math.min(anchor.x + 16, window.innerWidth - 420), top: Math.min(anchor.y + 16, window.innerHeight - 560), width: 380, zIndex: 60 }
+        : { position: "fixed", right: 20, top: 80, width: 420, zIndex: 60 };
 
     return (
-        <div style={{ border:"1px solid #e2e8f0", borderRadius:8, padding:12, height:"calc(100vh - 24px)", overflow:"auto" }}>
-            {!prof ? <p style={{color:"#64748b"}}>Click a point to open professor details.</p> :
-                <>
-                    <h3 style={{marginTop:0}}>{prof.firstName} {prof.lastName}</h3>
-                    <div style={{fontSize:13, color:"#334155"}}>
-                        <div>Dept: {prof.department}</div>
-                        <div>Rating: {prof.avgRating.toFixed(1)} • Diff: {prof.avgDifficulty.toFixed(1)} • WTA: {prof.wouldTakeAgainPercent.toFixed(1)}%</div>
-                        <div>Ratings: {prof.numRatings}</div>
-                        {prof.rmpUrl && <a href={prof.rmpUrl} target="_blank" rel="noreferrer">RateMyProfessors</a>}
-                        {overallAvg!=null && <div>Overall Average: {overallAvg.toFixed(2)}</div>}
+        <div style={style}>
+            <div style={{ background: "#0e1520", border: "1px solid #1e242e", borderRadius: 12, overflow: "hidden", boxShadow: "0 10px 30px rgba(0,0,0,.35)" }}>
+                <div style={{ padding: 12, borderBottom: "1px solid #1e242e", display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ fontWeight: 700 }}>{name}</div>
+                    <div style={{ marginLeft: "auto", fontSize: 12, color: "#9aa7b1" }}>
+                        {prof?.department || "—"} {prof?.faculty ? `• ${prof.faculty}` : ""}
                     </div>
+                    <button onClick={onClose} style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #2a3240", background: "#141820", color: "#e8edf2" }}>✕</button>
+                </div>
 
-                    <h4 style={{marginTop:16}}>Overall Grade Distribution</h4>
-                    <RatingDistribution dist={dist} />
+                <div style={{ padding: 12, display: "grid", gap: 10 }}>
+                    {err && <div style={{ color: "#ff9c9c" }}>{err}</div>}
+                    {loading && <div style={{ color: "#9aa7b1" }}>Loading…</div>}
 
-                    <h4 style={{marginTop:16}}>Sections</h4>
-                    <div style={{overflowX:"auto"}}>
-                        <table style={{width:"100%", borderCollapse:"collapse", fontSize:13}}>
-                            <thead>
-                            <tr>
-                                {["Campus","Year","Session","Subject","Course","Section","Professor","Enrolled","Avg","Std Dev","Title"].map(h=>
-                                    <th key={h} style={{ textAlign:"left", borderBottom:"1px solid #e2e8f0", padding:"6px 8px" }}>{h}</th>
-                                )}
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {rows.map((r,i)=>(
-                                <tr key={i}>
-                                    <td style={td}>{r.campus}</td>
-                                    <td style={td}>{r.year}</td>
-                                    <td style={td}>{r.session}</td>
-                                    <td style={td}>{r.subject}</td>
-                                    <td style={td}>{r.course}</td>
-                                    <td style={td}>{r.section}</td>
-                                    <td style={td}>{r.professorName}</td>
-                                    <td style={td}>{r.enrolled}</td>
-                                    <td style={td}>{r.avg==null?"N/A":r.avg.toFixed(2)}</td>
-                                    <td style={td}>{r.stdDev==null?"N/A":r.stdDev.toFixed(2)}</td>
-                                    <td style={td}>{r.title}</td>
+                    {!!prof && (
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 13 }}>
+                            <div>Avg Rating</div><div style={{ textAlign: "right" }}>{fmt(prof.avg_rating)}/5</div>
+                            <div>Difficulty</div><div style={{ textAlign: "right" }}>{fmt(prof.avg_difficulty)}/5</div>
+                            <div>Would Take Again</div><div style={{ textAlign: "right" }}>{fmt(prof.would_take_again_pct)}%</div>
+                            <div># Ratings</div><div style={{ textAlign: "right" }}>{prof.num_ratings ?? "—"}</div>
+                            {prof.legacy_id && (
+                                <>
+                                    <div>RMP</div>
+                                    <div style={{ textAlign: "right" }}>
+                                        <a style={{ color: "#7ab7ff" }} href={`https://www.ratemyprofessors.com/professor/${prof.legacy_id}`} target="_blank" rel="noreferrer">Open</a>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+
+                    <div style={{ borderTop: "1px solid #1e242e", paddingTop: 10 }}>
+                        <div style={{ fontWeight: 600, marginBottom: 8 }}>Courses Taught (matched via tid)</div>
+                        <div style={{ maxHeight: 220, overflow: "auto" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                                <thead>
+                                <tr style={{ color: "#9aa7b1", textAlign: "left" }}>
+                                    <th style={{ padding: 6 }}>Year</th>
+                                    <th style={{ padding: 6 }}>Sess</th>
+                                    <th style={{ padding: 6 }}>Course</th>
+                                    <th style={{ padding: 6 }}>Sect</th>
+                                    <th style={{ padding: 6, textAlign: "right" }}>Enr</th>
+                                    <th style={{ padding: 6, textAlign: "right" }}>RMP Avg</th>
+                                    <th style={{ padding: 6, textAlign: "right" }}>Diff</th>
+                                    <th style={{ padding: 6, textAlign: "right" }}>WTA%</th>
+                                    <th style={{ padding: 6, textAlign: "right" }}>#R</th>
                                 </tr>
-                            ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                {rows.map((r, i) => (
+                                    <tr key={i} style={{ borderTop: "1px solid #1e242e" }}>
+                                        <td style={{ padding: 6 }}>{r.year}</td>
+                                        <td style={{ padding: 6 }}>{r.session}</td>
+                                        <td style={{ padding: 6 }}>{`${r.subject} ${r.course}`}</td>
+                                        <td style={{ padding: 6 }}>{r.section}</td>
+                                        <td style={{ padding: 6, textAlign: "right" }}>{r.enrolled ?? "—"}</td>
+                                        <td style={{ padding: 6, textAlign: "right" }}>{fmt(r.avg_rating)}</td>
+                                        <td style={{ padding: 6, textAlign: "right" }}>{fmt(r.avg_difficulty)}</td>
+                                        <td style={{ padding: 6, textAlign: "right" }}>{fmt(r.would_take_again_pct)}</td>
+                                        <td style={{ padding: 6, textAlign: "right" }}>{r.num_ratings ?? "—"}</td>
+                                    </tr>
+                                ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </>}
+
+                    <div style={{ borderTop: "1px solid #1e242e", paddingTop: 10 }}>
+                        <div style={{ fontWeight: 600, marginBottom: 6 }}>Rating Distribution (this prof’s sections)</div>
+                        <RatingDistribution values={ratingsForHist} />
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
-const td: React.CSSProperties = { padding:"6px 8px", borderBottom:"1px solid #f1f5f9", whiteSpace:"nowrap" };
+
+function fmt(n: number | null | undefined, digits = 1) {
+    if (n == null || Number.isNaN(n)) return "—";
+    return Number(n).toFixed(digits);
+}

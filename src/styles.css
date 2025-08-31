@@ -1,0 +1,65 @@
+:root {
+    --bg: #0b0d10;
+    --bg-soft: #0e1520;
+    --card: #141820;
+    --stroke: #1e242e;
+    --muted: #9aa7b1;
+    --text: #e8edf2;
+    --chip: #172033;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial; }
+
+.app {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: 100vh;
+}
+
+.main { display: grid; grid-template-rows: auto 1fr; }
+
+button, .ghost, .secondary {
+    padding: 8px 12px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--stroke); background: #141820; color: var(--text);
+}
+button.secondary { background: #182235; }
+button.ghost { background: transparent; }
+
+input, select {
+    padding: 8px 10px; border-radius: 8px; width: 100%;
+    border: 1px solid var(--stroke); background: #141820; color: var(--text);
+}
+
+.card {
+    background: var(--card);
+    border: 1px solid var(--stroke);
+    border-radius: 12px;
+    padding: 12px;
+}
+.card.tall { display: grid; gap: 8px; align-content: start; }
+.card-h { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.muted { color: var(--muted); }
+.error { color: #ff8a8a; }
+.chip { background: var(--chip); border: 1px solid var(--stroke); border-radius: 999px; padding: 2px 8px; font-size: 12px; }
+
+.grid-2 { display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+.panel { background: var(--card); border: 1px solid var(--stroke); border-radius: 12px; padding: 12px; }
+.panel-header { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+.toolbar { display:flex; gap:12px; align-items:center; margin-bottom:8px; flex-wrap: wrap; }
+.toolbar-item { display:flex; align-items:center; gap:8px; }
+
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table th, .table td { padding: 6px; border-top: 1px solid var(--stroke); text-align: left; }
+.table .num { text-align: right; }
+
+.scroller { overflow:auto; max-height: 70vh; border: 1px solid var(--stroke); border-radius: 8px; }
+
+.row-hover:hover { background: #121a29; }
+
+.workarea { padding: 12px; overflow: auto; }
+
+.hero { margin: 12px 0 16px; }
