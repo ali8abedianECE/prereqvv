@@ -1,8 +1,13 @@
-// src/components/layout/TabBar.tsx
 import React from "react";
 
-export type TabKind = "path" | "course" | "scatter";
-export type Tab = { id: string; kind: TabKind; title: string; payload?: any };
+export type TabKind = "path" | "course" | "scatter" | "prof";
+
+export type Tab = {
+    id: string;
+    kind: TabKind;
+    title: string;
+    payload?: any;
+};
 
 export default function TabBar({
                                    tabs,
@@ -12,6 +17,7 @@ export default function TabBar({
                                    onAddScatter,
                                    onAddCourse,
                                    onAddPath,
+                                   onAddProf, // NEW
                                }: {
     tabs: Tab[];
     active: string | null;
@@ -20,6 +26,7 @@ export default function TabBar({
     onAddScatter: () => void;
     onAddCourse: () => void;
     onAddPath: () => void;
+    onAddProf: () => void; // NEW
 }) {
     return (
         <div className="tabbar" role="tablist" aria-label="Open tabs">
@@ -78,6 +85,8 @@ export default function TabBar({
             <button className="ghost" onClick={onAddPath}>+ Path Finder</button>
             <button className="ghost" onClick={onAddCourse}>+ Course Explorer</button>
             <button className="ghost" onClick={onAddScatter}>+ Scatter Plot</button>
+            {/* NEW quick-add */}
+            <button className="ghost" onClick={onAddProf}>+ Professor Explorer</button>
         </div>
     );
 }

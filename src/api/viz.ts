@@ -148,3 +148,63 @@ export function planTwoTerms(baseId: string, campus: Campus, completed: string[]
         { completed }
     );
 }
+
+/** ===================== Professor Explorer (PX) ===================== **/
+
+// Distinct types (PX-prefixed) so they won’t collide with existing ones.
+export type PXProfOverview = {
+    prof: VizProfessor | null;
+    sections: VizSection[];
+    perCourse: PXProfPerCourse[];
+    bins: Array<PXBin>;
+    hist: Array<PXHistBin>;
+};
+
+export type PXProfPerCourse = {
+    course_code: string;
+    n_sections: number;
+    avg_of_avg: number | null;
+    total_enrolled: number | null;
+    first_year: number | null;
+    last_year: number | null;
+};
+
+export type PXBin = { bin_label: string; count: number };
+export type PXHistBin = { x0: number; x1: number; c: number };
+
+/**
+ * New overview fetcher for the PX page.
+ * Uses /api/viz/professor_overview and keeps a unique name.
+ */
+export async function fetchProfessorOverviewPX(tid: string, bins = 24) {
+    const u = new URL("/api/viz/professor_overview", location.origin);
+    u.searchParams.set("tid", tid);
+    u.searchParams.set("bins", String(Math.min(60, Math.max(8, bins))));
+    return getJSON<PXProfOverview>(u.pathname + "?" + u.searchParams.toString());
+}
+
+/**
+ * Optional: distinct alias for searching professors if you
+ * want to route PX code paths through a different name.
+ */
+export async function searchProfessorsPX(q: unknown = "", limit = 50) {
+    const s = (function normalizeQuery(qv: unknown): string {
+        if (qv == null) return "";
+        if (typeof qv === "string") return qv;
+        if (Array.isArray(qv)) return qv.filter(Boolean).map(String).join(" ");
+        if (typeof qv === "object") {
+            const o = qv as Record<string, unknown>;
+            if (typeof o.text === "string") return o.text;
+            if (typeof o.label === "string") return o.label;
+            if (typeof o.name === "string") return o.name;
+            if (Array.isArray((o as any).tokens)) return (o as any).tokens.filter(Boolean).map(String).join(" ");
+            return Object.values(o).filter((v) => typeof v === "string").map(String).join(" ");
+        }
+        return String(qv);
+    })(q).trim();
+
+    const qs = new URLSearchParams();
+    if (s) qs.set("q", s);
+    if (limit) qs.set("limit", String(limit));
+    return getJSON<VizProfessor[]>(`/api/viz/professors?${qs.toString()}`);
+}

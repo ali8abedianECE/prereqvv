@@ -4,10 +4,12 @@ export default function StartScreen({
                                         onPath,
                                         onCourse,
                                         onScatter,
+                                        onProf, // NEW
                                     }: {
     onPath: () => void;
     onCourse: () => void;
     onScatter: () => void;
+    onProf: () => void; // NEW
 }) {
     return (
         <div style={{ padding: 24 }}>
@@ -30,6 +32,13 @@ export default function StartScreen({
                     <h3>Professor Scatter</h3>
                     <p className="muted">Difficulty vs rating with live search.</p>
                     <button onClick={onScatter}>Open Scatter Plot</button>
+                </div>
+
+                {/* NEW: Professor Explorer entry */}
+                <div className="card tall">
+                    <h3>Professor Explorer</h3>
+                    <p className="muted">Search a professor, see every section, per-course stats, and grade distribution.</p>
+                    <button onClick={onProf}>Open Professor Explorer</button>
                 </div>
             </div>
         </div>
