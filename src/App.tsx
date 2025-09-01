@@ -49,14 +49,24 @@ export default function App() {
         });
     }
 
-    function openCourse(courseCode = "CPEN 211") {
-        const base = toBase(courseCode);
-        addTab({
-            id: `course:${base}`, // stable id per course
-            kind: "course",
-            title: `Course: ${base}`,
-            payload: { courseCode: base },
-        });
+    // Open Course tab. If a courseCode is provided, open that course.
+    // Otherwise open a blank Course Explorer that asks the user to search.
+    function openCourse(courseCode?: string) {
+        if (courseCode && courseCode.trim()) {
+            const base = toBase(courseCode);
+            addTab({
+                id: `course:${base}`, // stable id per course
+                kind: "course",
+                title: `Course: ${base}`,
+                payload: { courseCode: base },
+            });
+        } else {
+            addTab({
+                id: `course:new:${uid()}`, // unique id for empty explorer
+                kind: "course",
+                title: "Course Explorer",
+            });
+        }
     }
 
     function openScatter() {
@@ -95,7 +105,12 @@ export default function App() {
                             {tabs.map((t) => (
                                 <div key={t.id} style={{ display: t.id === activeId ? "block" : "none" }}>
                                     {t.kind === "path" && <PathFinder defaultBase={t.payload?.defaultBase} />}
-                                    {t.kind === "course" && <CourseExplorer courseCode={t.payload.courseCode} />}
+
+                                    {t.kind === "course" &&
+                                        (t.payload?.courseCode
+                                            ? <CourseExplorer courseCode={t.payload.courseCode} />
+                                            : <CourseExplorer />)}
+
                                     {t.kind === "scatter" && <ProfScatter />}
                                 </div>
                             ))}

@@ -122,7 +122,7 @@ function PreviewCanvas({ items, radiusPx }: ClusterPreview3DProps) {
 
             {/* No camera prop — we set it once in InitCamera to avoid resets */}
             <Canvas>
-                <InitCamera />
+                <InitCamera pos={[-1.5, 1.5, 1.5]} fov={20} />
                 <ambientLight intensity={0.65} />
                 <directionalLight position={[5, 8, 6]} intensity={0.9} />
                 <SpheresRow items={items} radiusPx={radiusPx} />
