@@ -189,3 +189,189 @@ h3, h4 {
     margin: 8px 0;
 }
 
+/* ====== Dark Scheduler ====== */
+
+:root {
+    --bg: #0f1216;
+    --bg2: #141920;
+    --panel: #151a22;
+    --text: #e6e9ef;
+    --muted: #9aa3af;
+    --line: #263140;
+    --line2: #1d2530;
+    --chip: #1a212b;
+    --chip-border: #2a3443;
+    --blue: #4da3ff;
+    --danger: #ff6b6b;
+}
+
+.sch-wrap {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 16px;
+    padding: 16px;
+    background: var(--bg);
+    color: var(--text);
+    min-height: calc(100vh - 64px);
+}
+
+.sch-rail {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.sch-panel {
+    background: var(--panel);
+    border: 1px solid var(--line2);
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+}
+
+.sch-title {
+    font-weight: 700;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.muted { color: var(--muted); }
+
+.sch-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 8px;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.sch-input, .sch-btn, .sch-chip {
+    font: inherit;
+}
+
+.sch-input {
+    width: 100%;
+    padding: 8px 10px;
+    background: #0e131a;
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    outline: none;
+}
+.sch-input:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 2px #4da3ff33;
+}
+
+.sch-row { display: flex; gap: 8px; align-items: center; }
+.sb { justify-content: space-between; }
+
+.sch-btn {
+    padding: 8px 12px;
+    background: var(--blue);
+    color: #051424;
+    font-weight: 700;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.sch-btn:hover { filter: brightness(1.06); }
+.sch-btn.ghost {
+    background: #0e131a;
+    color: var(--text);
+    border-color: var(--line);
+}
+.sch-btn.danger {
+    background: #221417;
+    color: #ffd6d6;
+    border-color: #5b2a2f;
+}
+
+.sch-sub { margin-top: 10px; font-size: 12px; color: var(--muted); }
+
+.sch-chiprow { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.sch-chip {
+    background: var(--chip);
+    border: 1px solid var(--chip-border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 999px;
+    cursor: grab;
+    user-select: none;
+}
+.sch-chip.active {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 2px #4da3ff33;
+}
+.sch-chip .check { margin-left: 6px; }
+
+.comp-group { margin-top: 10px; }
+.comp-title { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+
+.dot {
+    width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+    box-shadow: 0 0 0 2px #00000055 inset, 0 0 6px 0 currentColor;
+}
+
+/* Calendar */
+.sch-cal {
+    background: radial-gradient(1200px 540px at 40% -10%, #1d2430 0%, #11161c 60%, #0f1216 100%);
+    border: 1px solid var(--line2);
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+}
+
+.sch-head {
+    display: grid;
+    grid-template-columns: ${GRID_LEFT_GUTTER}px repeat(5, ${COL_W}px);
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    backdrop-filter: blur(8px);
+    background: #0f1216cc;
+    border-bottom: 1px solid var(--line2);
+}
+.sch-head-gutter { height: ${GRID_TOP}px; }
+.sch-head-day {
+    height: ${GRID_TOP}px; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; letter-spacing: 0.02em;
+}
+
+.sch-canvas { position: relative; }
+
+.sch-line {
+    position: absolute;
+    height: 1px; background: #ffffff0e;
+}
+.sch-vline {
+    position: absolute;
+    width: 1px; background: #ffffff08;
+}
+.sch-hour {
+    position: absolute; left: 0; width: ${GRID_LEFT_GUTTER - 8}px;
+    text-align: right; font-size: 12px; color: var(--muted);
+}
+
+.sch-block {
+    position: absolute;
+    border-radius: 10px;
+    padding: 8px 10px;
+    box-sizing: border-box;
+    color: #0a0f14;
+    backdrop-filter: blur(4px);
+    display: flex; flex-direction: column; justify-content: center;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.35), inset 0 0 40px rgba(255,255,255,0.06);
+}
+.sch-block-title { font-weight: 800; line-height: 1.1; }
+.sch-block-sub { font-size: 12px; margin-top: 2px; opacity: 0.9; }
+
+.sch-hint {
+    position: sticky; bottom: 0; padding: 10px 12px;
+    background: #0f1216e6; border-top: 1px solid var(--line2);
+    font-size: 12px; color: var(--muted);
+}

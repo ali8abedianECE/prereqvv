@@ -1,15 +1,38 @@
+// src/StartScreen.tsx
 import React from "react";
+
+function FeatureCard({
+                         title,
+                         blurb,
+                         onClick,
+                         cta,
+                     }: {
+    title: string;
+    blurb: string;
+    onClick: () => void;
+    cta: string;
+}) {
+    return (
+        <div className="card tall">
+            <h3>{title}</h3>
+            <p className="muted">{blurb}</p>
+            <button onClick={onClick}>{cta}</button>
+        </div>
+    );
+}
 
 export default function StartScreen({
                                         onPath,
                                         onCourse,
                                         onScatter,
-                                        onProf, // NEW
+                                        onProf,
+                                        onSched,
                                     }: {
     onPath: () => void;
     onCourse: () => void;
     onScatter: () => void;
-    onProf: () => void; // NEW
+    onProf: () => void;
+    onSched: () => void;
 }) {
     return (
         <div style={{ padding: 24 }}>
@@ -17,29 +40,38 @@ export default function StartScreen({
                 <h2>UBC Tools</h2>
                 <p className="muted">Pick a workspace to begin.</p>
             </div>
-            <div className="grid-3">
-                <div className="card tall">
-                    <h3>Path Finder</h3>
-                    <p className="muted">Explore prerequisites/co-reqs and plan two terms.</p>
-                    <button onClick={onPath}>Open Path Finder</button>
-                </div>
-                <div className="card tall">
-                    <h3>Course Explorer (PRV)</h3>
-                    <p className="muted">Sections, instructors, grades, and RMP matches.</p>
-                    <button onClick={onCourse}>Open Course Explorer</button>
-                </div>
-                <div className="card tall">
-                    <h3>Professor Scatter</h3>
-                    <p className="muted">Difficulty vs rating with live search.</p>
-                    <button onClick={onScatter}>Open Scatter Plot</button>
-                </div>
 
-                {/* NEW: Professor Explorer entry */}
-                <div className="card tall">
-                    <h3>Professor Explorer</h3>
-                    <p className="muted">Search a professor, see every section, per-course stats, and grade distribution.</p>
-                    <button onClick={onProf}>Open Professor Explorer</button>
-                </div>
+            <div className="grid-3">
+                <FeatureCard
+                    title="Path Finder"
+                    blurb="Explore prerequisites/co-reqs and plan two terms."
+                    onClick={onPath}
+                    cta="Open Path Finder"
+                />
+                <FeatureCard
+                    title="Course Explorer (PRV)"
+                    blurb="Sections, instructors, grades, and RMP matches."
+                    onClick={onCourse}
+                    cta="Open Course Explorer"
+                />
+                <FeatureCard
+                    title="Professor Scatter"
+                    blurb="Difficulty vs rating with live search."
+                    onClick={onScatter}
+                    cta="Open Scatter Plot"
+                />
+                <FeatureCard
+                    title="Professor Explorer"
+                    blurb="Search a professor; see sections, stats, distributions."
+                    onClick={onProf}
+                    cta="Open Professor Explorer"
+                />
+                <FeatureCard
+                    title="Scheduler"
+                    blurb="Build a conflict-free timetable from real offerings."
+                    onClick={onSched}
+                    cta="Open Scheduler"
+                />
             </div>
         </div>
     );

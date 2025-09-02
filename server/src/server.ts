@@ -1,8 +1,12 @@
+// server/src/server.ts
 import express from "express";
 import cors from "cors";
 import Database from "better-sqlite3";
 import path from "path";
+
+// Routers
 import createVizRouter from "./viz_api.ts";
+import createSchedRouter from "./sched_api.ts"; // <-- NEW
 
 
 const DB_FILE = process.env.DB_FILE || path.resolve("prereqs.db");
@@ -81,8 +85,10 @@ app.get("/api/search_base", (req, res) => {
     res.json(filtered.slice(0, 50));
 });
 
+// Mount existing viz routes
 app.use("/api/viz", createVizRouter(db));
 
+// Your existing endpoints
 app.get("/api/course_base/:base", (req, res) => {
     const base = req.params.base.toUpperCase();
     const campus = (req.query.campus as string | undefined) ?? undefined;
@@ -316,6 +322,9 @@ app.post("/api/plan_base/:base", (req, res) => {
 
     return res.json({ ok: true, plan: { term1: t1, term2: t2 } });
 });
+
+// Mount scheduler routes (terms/search/offerings/generate)
+app.use("/api/sched", createSchedRouter(db)); // <-- NEW
 
 const port = Number(process.env.PORT || 3001);
 app.listen(port, () => console.log(`API on http://localhost:${port}`));

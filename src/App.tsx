@@ -1,16 +1,16 @@
+// src/App.tsx
 import React from "react";
 import Sidebar from "./components/layout/Sidebar";
 import TabBar, { Tab } from "./components/layout/TabBar";
 import StartScreen from "./StartScreen";
 import "./App.css";
 
-// features
 import ProfScatter from "./features/scatter/ProfScatter";
 import CourseExplorer from "./features/course/CourseExplorer";
 import PathFinder from "./features/path/PathFinder";
 import ProfessorExplorer from "./features/prof/ProfessorExplorer";
+import Scheduler from "./features/sched/Scheduler"; // NEW
 
-// normalize course codes like "CPEN 211"
 function toBase(id: string) {
     return id.toUpperCase().replace(/\s+/g, " ").trim();
 }
@@ -18,10 +18,9 @@ function toBase(id: string) {
 const uid = () => Math.random().toString(36).slice(2);
 
 export default function App() {
-    const [tabs, setTabs] = React.useState<Tab[]>([]); // start empty
+    const [tabs, setTabs] = React.useState<Tab[]>([]);
     const [activeId, setActiveId] = React.useState<string | null>(null);
 
-    // keep activeId valid when tabs change
     React.useEffect(() => {
         if (activeId && tabs.some((t) => t.id === activeId)) return;
         setActiveId(tabs.length ? tabs[0].id : null);
@@ -50,44 +49,28 @@ export default function App() {
         });
     }
 
-    // Open Course tab. If a courseCode is provided, open that course,
-    // otherwise open an empty Course Explorer.
     function openCourse(courseCode?: string) {
         if (courseCode && courseCode.trim()) {
             const base = toBase(courseCode);
-            addTab({
-                id: `course:${base}`,
-                kind: "course",
-                title: `Course: ${base}`,
-                payload: { courseCode: base },
-            });
+            addTab({ id: `course:${base}`, kind: "course", title: `Course: ${base}`, payload: { courseCode: base } });
         } else {
-            addTab({
-                id: `course:new:${uid()}`,
-                kind: "course",
-                title: "Course Explorer",
-            });
+            addTab({ id: `course:new:${uid()}`, kind: "course", title: "Course Explorer" });
         }
     }
 
     function openScatter() {
-        addTab({
-            id: `scatter:${uid()}`,
-            kind: "scatter",
-            title: "Professor Scatter",
-        });
+        addTab({ id: `scatter:${uid()}`, kind: "scatter", title: "Professor Scatter" });
     }
 
     function openProfessorExplorer() {
-        addTab({
-            id: `prof:${uid()}`,
-            kind: "prof",
-            title: "Professor Explorer",
-        } as Tab);
+        addTab({ id: `prof:${uid()}`, kind: "prof", title: "Professor Explorer" });
     }
 
-    // used by Sidebar to highlight the active section
-    const activeKind: "start" | "path" | "course" | "scatter" | "prof" =
+    function openScheduler() {
+        addTab({ id: `sched:${uid()}`, kind: "sched", title: "Scheduler" });
+    }
+
+    const activeKind: "start" | "path" | "course" | "scatter" | "prof" | "sched" =
         !activeId ? "start" : ((tabs.find((t) => t.id === activeId)?.kind as any) || "start");
 
     return (
@@ -110,23 +93,18 @@ export default function App() {
                             onAddScatter={openScatter}
                             onAddCourse={() => openCourse()}
                             onAddPath={() => openPath()}
-                            onAddProf={openProfessorExplorer} // NEW
+                            onAddProf={openProfessorExplorer}
+                            onAddSched={openScheduler} // NEW
                         />
                         <div className="workarea">
                             {tabs.map((t) => (
                                 <div key={t.id} style={{ display: t.id === activeId ? "block" : "none" }}>
                                     {t.kind === "path" && <PathFinder defaultBase={t.payload?.defaultBase} />}
-
                                     {t.kind === "course" &&
-                                        (t.payload?.courseCode ? (
-                                            <CourseExplorer courseCode={t.payload.courseCode} />
-                                        ) : (
-                                            <CourseExplorer />
-                                        ))}
-
+                                        (t.payload?.courseCode ? <CourseExplorer courseCode={t.payload.courseCode} /> : <CourseExplorer />)}
                                     {t.kind === "scatter" && <ProfScatter />}
-
                                     {t.kind === "prof" && <ProfessorExplorer />}
+                                    {t.kind === "sched" && <Scheduler />}{/* NEW */}
                                 </div>
                             ))}
                         </div>
@@ -136,7 +114,8 @@ export default function App() {
                         onPath={() => openPath()}
                         onCourse={() => openCourse()}
                         onScatter={openScatter}
-                        onProf={openProfessorExplorer} // NEW
+                        onProf={openProfessorExplorer}
+                        onSched={openScheduler} // NEW
                     />
                 )}
             </main>
