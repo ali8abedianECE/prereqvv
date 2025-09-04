@@ -47,7 +47,7 @@ export type Offering = {
 export type SearchHit = { base: string; sections: number };
 
 export const API_BASE =
-    (import.meta as any).env?.VITE_API_BASE?.replace(/\/+$/, "") || "https://prereqvv.onrender.com/";
+    (import.meta as any).env?.VITE_API_BASE?.replace(/\/+$/, "") || "https://prereqvv.onrender.com";
 
 export async function getJSON<T>(path: string): Promise<T> {
     const r = await fetch(`${API_BASE}${path}`, { headers: { Accept: "application/json" } });
