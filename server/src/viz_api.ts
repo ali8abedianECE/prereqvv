@@ -2,7 +2,7 @@
 import { Router, type Request, type Response } from "express";
 import type Database from "better-sqlite3";
 
-export default function createVizRouter(db: Database) {
+export default function createVizRouter(db: Database.Database) {
     const r = Router();
 
     /* ---------------- helpers ---------------- */
