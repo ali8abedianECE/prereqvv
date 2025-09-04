@@ -3,7 +3,7 @@ import React from "react";
 import Sidebar from "./components/layout/Sidebar";
 import TabBar, { Tab } from "./components/layout/TabBar";
 import StartScreen from "./StartScreen";
-import "./App.css";
+import "./app.css";
 
 import ProfScatter from "./features/scatter/ProfScatter";
 import CourseExplorer from "./features/course/CourseExplorer";
