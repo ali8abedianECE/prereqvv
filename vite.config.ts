@@ -8,7 +8,7 @@ export default defineConfig({
         proxy: {
             // Forward /api/* from Vite (5173) to your Node API (3001)
             "/api": {
-                target: "http://localhost:3001",
+                target: "https://prereqvv.onrender.com",
                 changeOrigin: true,
                 // follow redirects just in case
                 secure: false,

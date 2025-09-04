@@ -1,6 +1,6 @@
 // Small fetch helper that guarantees JSON (and throws on HTML errors)
 export const API_BASE =
-    (import.meta as any).env?.VITE_API_BASE?.replace(/\/+$/, "") || "http://localhost:3001";
+    (import.meta as any).env?.VITE_API_BASE?.replace(/\/+$/, "") || "https://prereqvv.onrender.com";
 
 export async function getJSON<T>(url: string): Promise<T> {
     const r = await fetch(`${API_BASE}${url}`, {
