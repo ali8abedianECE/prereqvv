@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://tempsto/api/:path*" },
+    { "source": "/api/:path*", "destination": "https://prereqvv.onrender.com/api/:path*" },
     { "source": "/(.*)", "destination": "/" }
   ]
 }
