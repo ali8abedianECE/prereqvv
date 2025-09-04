@@ -327,4 +327,4 @@ app.post("/api/plan_base/:base", (req, res) => {
 app.use("/api/sched", createSchedRouter(db)); // <-- NEW
 
 const port = Number(process.env.PORT || 3001);
-app.listen(port, () => console.log(`API on http://localhost:${port}`));
+app.listen(port, "0.0.0.0", () => console.log(`API on :${port}`));
