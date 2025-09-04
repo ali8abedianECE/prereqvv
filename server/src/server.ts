@@ -326,5 +326,7 @@ app.post("/api/plan_base/:base", (req, res) => {
 // Mount scheduler routes (terms/search/offerings/generate)
 app.use("/api/sched", createSchedRouter(db)); // <-- NEW
 
+app.get("/api/health", (_req, res) => res.json({ ok: true }));
+
 const port = Number(process.env.PORT || 3001);
 app.listen(port, "0.0.0.0", () => console.log(`API on :${port}`));
