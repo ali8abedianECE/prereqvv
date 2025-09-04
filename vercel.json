@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://tempsto/api/:path*" },
+    { "source": "/(.*)", "destination": "/" }
+  ]
+}
