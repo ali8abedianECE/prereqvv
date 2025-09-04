@@ -86,7 +86,7 @@ export default function Sidebar({
     </div>
 
     <div style={{ marginTop: "auto", color: "#617086", fontSize: 11 }}>
-    Created by you 🧠 — inspired by the Java Swing tool.
+    Created by Ali Abedian, Andy Lu, Nick Liu and christina.
     </div>
     </aside>
 );
