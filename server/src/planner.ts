@@ -35,7 +35,7 @@ const toBase = (id: string) => {
 const campusToUbcGrades = (c: Exclude<Campus, "AUTO" | "" | undefined | null>) =>
     c === "V" ? "UBCV" : "UBCO";
 
-export function buildBaseIndex(db: Database) {
+export function buildBaseIndex(db: Database.Database) {
     const out = new Map<string, { ids: Record<string, string> }>();
     const rows = db.prepare("SELECT id FROM courses").all() as Array<{ id: string }>;
     for (const r of rows) {
@@ -109,7 +109,7 @@ type Cache = {
     costMemo: Map<string, { easiest: number; hardest: number; fewest: number }>;
 };
 
-function getTree(db: Database, id: string, cache: Cache): Tree | null {
+function getTree(db: Database.Database, id: string, cache: Cache): Tree | null {
     if (cache.treeByActual.has(id)) return cache.treeByActual.get(id) || null;
     const row = db.prepare("SELECT tree_json FROM courses WHERE id = ?").get(id) as
         | { tree_json: string | null }
@@ -153,7 +153,7 @@ function isCoreqMeta(n?: { kind?: string }) {
 }
 
 export async function planCourse(
-    db: Database,
+    db: Database.Database,
     baseIndex: Map<string, { ids: Record<string, string> }>,
     base: string,
     campus: Campus,
@@ -194,7 +194,7 @@ export async function planCourse(
 }
 
 async function pickSet(
-    db: Database,
+    db: Database.Database,
     baseIndex: Map<string, { ids: Record<string, string> }>,
     targetActual: string,
     campus: Campus,
@@ -297,7 +297,7 @@ async function pickSet(
 }
 
 async function enumerateAlternatives(
-    db: Database,
+    db: Database.Database,
     baseIndex: Map<string, { ids: Record<string, string> }>,
     targetActual: string,
     campus: Campus,

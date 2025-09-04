@@ -1,9 +1,13 @@
+// server/src/index.ts
 import express from "express";
-import { mountVizApi } from "./viz_api";
+import Database from "better-sqlite3";
+import createVizRouter from "./viz_api.js";
+
 const app = express();
+const db = new Database(process.env.DB_PATH || "./prereqs.db");
 
 app.use(express.json());
-mountVizApi(app);
+app.use("/api/viz", createVizRouter(db));
 
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT) || 3001;
 app.listen(PORT, () => console.log(`API on :${PORT}`));

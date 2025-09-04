@@ -5,8 +5,8 @@ import Database from "better-sqlite3";
 import path from "path";
 
 // Routers
-import createVizRouter from "./viz_api.ts";
-import createSchedRouter from "./sched_api.ts"; // <-- NEW
+import createVizRouter from "./viz_api.js";
+import createSchedRouter from "./sched_api.js"; // <-- NEW
 
 
 const DB_FILE = process.env.DB_FILE || path.resolve("prereqs.db");
@@ -96,7 +96,7 @@ app.get("/api/course_base/:base", (req, res) => {
     if (!id) return res.status(404).json({ error: "not found" });
     const course = db.prepare("SELECT * FROM courses WHERE id = ?").get(id);
     const constraints = db.prepare("SELECT * FROM constraints WHERE course_id = ?").all(id);
-    res.json({ ...course, constraints, base_id: base, actual_id: id });
+    res.json({ ...(course ?? {}), constraints, base_id: base, actual_id: id });
 });
 
 app.get("/api/graph_base/:base", (req, res) => {
